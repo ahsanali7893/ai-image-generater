@@ -1,101 +1,119 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [inputText, setInputText] = useState("");
+  const [result, setResult] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const API_TOKEN = process.env.NEXT_PUBLIC_HUGGING_FACE_API_KEY; // Ensure this variable is correctly defined in .env.local
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleSubmit = async () => {
+    setLoading(true); // Show loader
+    setResult(null); // Clear previous result
+    try {
+      const response = await fetch(
+        "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell", // Using the text-to-image model
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${API_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            inputs: inputText, // The input text for image generation
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.blob();
+      console.log("API Response:", data);
+
+      const imageUrl = URL.createObjectURL(data);
+      setResult(imageUrl);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setResult("An error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6">
+      <h1 className="text-3xl font-bold mb-6">AI Image Generator</h1>
+
+      <div className="w-full max-w-lg">
+        <textarea
+          className="w-full bg-white text-black border border-gray-300 rounded-lg p-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="Enter your text..."
+          rows={5}
+        />
+        <button
+          className={`mt-4 w-full px-6 py-3 text-lg font-semibold rounded-lg shadow-lg transition ${
+            loading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-green-500 hover:bg-green-600"
+          }`}
+          onClick={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? "Loading..." : "Generate Image"}
+        </button>
+      </div>
+
+      <div className="w-full max-w-lg mt-8">
+        <p className="text-lg font-medium">Result:</p>
+        <div className="bg-white text-black rounded-lg p-4 mt-4 shadow-lg min-h-[120px]">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <svg
+                className="animate-spin h-8 w-8 text-blue-500"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v8H4z"
+                ></path>
+              </svg>
+            </div>
+          ) : result ? (
+            <div>
+              <img
+                src={result}
+                alt="Generated Image"
+                className="w-full h-auto rounded-lg"
+              />
+              <a
+                href={result}
+                download="generated-image.jpg"
+                className="mt-4 inline-block text-lg font-semibold text-blue-500 hover:underline"
+              >
+                Download Image
+              </a>
+            </div>
+          ) : (
+            <p>Your generated image will appear here.</p>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
   );
 }
